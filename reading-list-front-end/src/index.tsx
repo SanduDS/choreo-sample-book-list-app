@@ -76,11 +76,21 @@ export default function App() {
     if (isSignedIn) {
       setIsLoading(true);
       try {
+        console.log('Fetching books...');
         const res = await getBooks();
-        const grouped = groupBy(res.data, (item) => item.status);
-        setReadList(grouped);
+        console.log('Books response:', res.data);
+        
+        if (res.data && res.data.length > 0) {
+          const grouped = groupBy(res.data, (item) => item.status);
+          console.log('Grouped books:', grouped);
+          setReadList(grouped);
+        } else {
+          console.log('No books found');
+          setReadList({});
+        }
       } catch (e) {
-        console.log("Error fetching books:", e);
+        console.error("Error fetching books:", e);
+        alert('Failed to load books. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -89,16 +99,31 @@ export default function App() {
 
   useEffect(() => {
     if (!isAddItemOpen && state.isAuthenticated) {
-      // Refresh the reading list when modal closes
+      // Refresh the reading list when modal closes (after adding a book)
+      console.log('Modal closed, refreshing book list...');
       getReadingList();
     }
   }, [isAddItemOpen, state.isAuthenticated]);
 
-  const handleDelete = async (id: string) => {
-    setIsLoading(true);
-    await deleteBooks(id);
-    getReadingList();
-    setIsLoading(false);
+  const handleDelete = async (uuid: string) => {
+    if (!uuid) {
+      console.error('Cannot delete: UUID is missing');
+      alert('Cannot delete book: ID is missing');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      await deleteBooks(uuid);
+      console.log('Book deleted successfully');
+      // Refresh the list after deletion
+      await getReadingList();
+    } catch (error) {
+      console.error('Error deleting book:', error);
+      alert('Failed to delete book. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignIn = async () => {
@@ -196,25 +221,32 @@ export default function App() {
                 </button>
               </div>
             </div>
-            {readList && (
+            {readList && Object.keys(readList).length > 0 ? (
               <Tab.Group>
                 <Tab.List className="flex space-x-1 rounded-xl bg-blue-900/20 p-1">
-                  {Object.keys(readList).map((val) => (
-                    <Tab
-                      key={val}
-                      className={({ selected }) =>
-                        classNames(
-                          "w-full rounded-lg py-2.5 text-sm font-medium leading-5 text-blue-700",
-                          "ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2",
-                          selected
-                            ? "bg-white shadow"
-                            : "text-blue-100 hover:bg-white/[0.12] hover:text-white"
-                        )
-                      }
-                    >
-                      {val}
-                    </Tab>
-                  ))}
+                  {Object.keys(readList).map((status) => {
+                    const count = readList[status]?.length || 0;
+                    const displayName = status.replace('_', ' ').toUpperCase();
+                    return (
+                      <Tab
+                        key={status}
+                        className={({ selected }) =>
+                          classNames(
+                            "w-full rounded-lg py-2.5 text-sm font-medium leading-5",
+                            "ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2",
+                            selected
+                              ? "bg-white shadow text-blue-700"
+                              : "text-blue-100 hover:bg-white/[0.12] hover:text-white"
+                          )
+                        }
+                      >
+                        <div className="flex flex-col items-center">
+                          <span>{displayName}</span>
+                          <span className="text-xs opacity-75">({count})</span>
+                        </div>
+                      </Tab>
+                    );
+                  })}
                 </Tab.List>
                 <Tab.Panels className="mt-2">
                   {Object.entries(readList).map(([status, books], idx) => (
@@ -230,35 +262,60 @@ export default function App() {
                             )
                       }
                     >
-                      <ul>
-                        {(books as Book[]).map((book) => (
-                          <div className="flex justify-between">
-                            <li
-                              key={book.id}
-                              className="relative rounded-md p-3"
-                            >
-                              <h3 className="text-sm font-medium leading-5">
-                                {book.title}
-                              </h3>
-
-                              <ul className="mt-1 flex space-x-1 text-xs font-normal leading-4 text-gray-500">
-                                <li>{book.author}</li>
-                                <li>&middot;</li>
-                              </ul>
+                      {books && books.length > 0 ? (
+                        <ul className="space-y-2">
+                          {(books as Book[]).map((book) => (
+                            <li key={book.uuid} className="border-b border-gray-100 pb-2 last:border-b-0">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h3 className="text-sm font-medium leading-5 text-gray-900">
+                                    {book.title}
+                                  </h3>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    by {book.author}
+                                  </p>
+                                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                                    {status.replace('_', ' ')}
+                                  </span>
+                                </div>
+                                <button
+                                  className="ml-3 bg-red-500 hover:bg-red-600 text-white rounded-md text-xs px-3 py-1 transition-colors"
+                                  onClick={() => {
+                                    console.log('Delete button clicked, book:', book);
+                                    if (book.uuid) {
+                                      if (confirm(`Are you sure you want to delete "${book.title}"?`)) {
+                                        handleDelete(book.uuid);
+                                      }
+                                    } else {
+                                      console.error('Book UUID is missing:', book);
+                                      alert('Cannot delete book: UUID is missing');
+                                    }
+                                  }}
+                                  disabled={isLoading}
+                                >
+                                  {isLoading ? 'Deleting...' : 'Delete'}
+                                </button>
+                              </div>
                             </li>
-                            <button
-                              className="float-right bg-red-500 text-white rounded-md self-center text-xs p-2 mr-2"
-                              onClick={() => handleDelete(book.id!)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        ))}
-                      </ul>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No books in "{status.replace('_', ' ')}" category</p>
+                          <p className="text-xs mt-1">Add some books to get started!</p>
+                        </div>
+                      )}
                     </Tab.Panel>
                   ))}
                 </Tab.Panels>
               </Tab.Group>
+            ) : (
+              <div className="rounded-xl bg-white p-8 text-center">
+                <div className="text-gray-500">
+                  <p className="text-lg mb-2">📚 No books yet!</p>
+                  <p className="text-sm">Start building your reading list by adding your first book.</p>
+                </div>
+              </div>
             )}
             <AddItem isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
           </div>

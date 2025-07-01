@@ -22,5 +22,13 @@ import { Book } from "./types/book";
 export async function getBooks() {
   const instance = await getReadingListInstance();
   const response = await instance.get("/books");
-  return response as AxiosResponse<Book[]>;
+  
+  // Convert object response to array format
+  const data = response.data;
+  const booksArray = Object.keys(data).map(uuid => ({
+    uuid,
+    ...data[uuid]
+  }));
+  
+  return { ...response, data: booksArray } as AxiosResponse<Book[]>;
 }
