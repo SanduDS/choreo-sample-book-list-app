@@ -34,6 +34,7 @@ export default function App() {
   const [readList, setReadList] = useState<Dictionary<Book[]> | null>(null);
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [deletingBookId, setDeletingBookId] = useState<string | null>(null);
   const {
     signIn,
     signOut,
@@ -71,12 +72,12 @@ export default function App() {
     setIsLoading(false);
   }
 
-  async function getReadingList() {
+  async function getReadingList(forceRefresh = false) {
     const isSignedIn = await isAuthenticated();
     if (isSignedIn) {
       setIsLoading(true);
       try {
-        console.log('Fetching books...');
+        console.log('Fetching books...', forceRefresh ? '(forced refresh)' : '');
         const res = await getBooks();
         console.log('Books response:', res.data);
         
@@ -90,7 +91,9 @@ export default function App() {
         }
       } catch (e) {
         console.error("Error fetching books:", e);
-        alert('Failed to load books. Please try again.');
+        if (forceRefresh) {
+          alert('Failed to load books. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -98,11 +101,22 @@ export default function App() {
   }
 
   useEffect(() => {
+    // Only refresh when modal closes after being open (indicating a book might have been added)
+    let timeoutId: number;
+    
     if (!isAddItemOpen && state.isAuthenticated) {
-      // Refresh the reading list when modal closes (after adding a book)
       console.log('Modal closed, refreshing book list...');
-      getReadingList();
+      // Add a small delay to ensure the API call from adding the book has completed
+      timeoutId = setTimeout(() => {
+        getReadingList();
+      }, 500);
     }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [isAddItemOpen, state.isAuthenticated]);
 
   const handleDelete = async (uuid: string) => {
@@ -113,7 +127,7 @@ export default function App() {
     }
     
     try {
-      setIsLoading(true);
+      setDeletingBookId(uuid); // Set specific book as being deleted
       await deleteBooks(uuid);
       console.log('Book deleted successfully');
       // Refresh the list after deletion
@@ -122,7 +136,7 @@ export default function App() {
       console.error('Error deleting book:', error);
       alert('Failed to delete book. Please try again.');
     } finally {
-      setIsLoading(false);
+      setDeletingBookId(null); // Clear the deleting state
     }
   };
 
@@ -214,10 +228,14 @@ export default function App() {
                   + Add New
                 </button>
                 <button
-                  className="float-right bg-black bg-opacity-20 p-2 rounded-md text-sm my-3 font-medium text-white w-10 h-10 mr-1"
-                  onClick={() => getReadingList()}
+                  className={`float-right bg-black bg-opacity-20 p-2 rounded-md text-sm my-3 font-medium text-white w-10 h-10 mr-1 transition-opacity ${isLoading ? 'opacity-50' : 'hover:opacity-80'}`}
+                  onClick={() => {
+                    console.log('Manual refresh triggered');
+                    getReadingList(true); // Force refresh with error alerts
+                  }}
+                  disabled={isLoading}
                 >
-                  <ArrowPathIcon />
+                  <ArrowPathIcon className={isLoading ? 'animate-spin' : ''} />
                 </button>
               </div>
             </div>
@@ -279,7 +297,7 @@ export default function App() {
                                   </span>
                                 </div>
                                 <button
-                                  className="ml-3 bg-red-500 hover:bg-red-600 text-white rounded-md text-xs px-3 py-1 transition-colors"
+                                  className="ml-3 bg-red-500 hover:bg-red-600 text-white rounded-md text-xs px-3 py-1 transition-colors disabled:opacity-50"
                                   onClick={() => {
                                     console.log('Delete button clicked, book:', book);
                                     if (book.uuid) {
@@ -291,9 +309,9 @@ export default function App() {
                                       alert('Cannot delete book: UUID is missing');
                                     }
                                   }}
-                                  disabled={isLoading}
+                                  disabled={deletingBookId === book.uuid}
                                 >
-                                  {isLoading ? 'Deleting...' : 'Delete'}
+                                  {deletingBookId === book.uuid ? 'Deleting...' : 'Delete'}
                                 </button>
                               </div>
                             </li>
@@ -317,7 +335,15 @@ export default function App() {
                 </div>
               </div>
             )}
-            <AddItem isOpen={isAddItemOpen} setIsOpen={setIsAddItemOpen} />
+            <AddItem 
+              isOpen={isAddItemOpen} 
+              setIsOpen={setIsAddItemOpen}
+              onBookAdded={() => {
+                console.log('Book added callback triggered');
+                // Use a timeout to ensure the backend has processed the request
+                setTimeout(() => getReadingList(true), 1000);
+              }}
+            />
           </div>
         </div>
       </div>

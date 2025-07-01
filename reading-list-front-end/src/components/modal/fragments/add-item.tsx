@@ -25,6 +25,7 @@ import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/24/solid";
 export interface AddItemProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onBookAdded?: () => void;
 }
 
 const statuses = [
@@ -34,7 +35,7 @@ const statuses = [
 ];
 
 export default function AddItem(props: AddItemProps) {
-  const { isOpen, setIsOpen } = props;
+  const { isOpen, setIsOpen, onBookAdded } = props;
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   const [status, setStatus] = useState(statuses[0]);
@@ -67,8 +68,14 @@ export default function AddItem(props: AddItemProps) {
       setAuthor("");
       setStatus(statuses[0]);
       setIsOpen(false);
+      
+      // Call the callback to refresh the book list
+      if (onBookAdded) {
+        onBookAdded();
+      }
     } catch (error) {
       console.error("Error adding book:", error);
+      alert('Failed to add book. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
