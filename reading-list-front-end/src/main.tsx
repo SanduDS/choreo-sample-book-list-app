@@ -30,6 +30,7 @@ interface Config {
   tokenUrl?: string;
   consumerKey?: string;
   consumerSecret?: string;
+  enbaleAuth?: string;
 }
 
 declare global {

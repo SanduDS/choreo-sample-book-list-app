@@ -74,12 +74,17 @@ const getValidAccessToken = async (): Promise<string> => {
 };
 
 export const getReadingListInstance = async () => {
-  const accessToken = await getValidAccessToken();
-  
-  return axios.create({ 
-    baseURL: window.config.choreoApiUrl,
-    headers: {
-      'Authorization': `Bearer ${accessToken}`
-    }
-  });
+  if (window.config?.enbaleAuth === 'true') {
+    const accessToken = await getValidAccessToken();
+    return axios.create({
+      baseURL: window.config.choreoApiUrl,
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+  } else {
+    return axios.create({
+      baseURL: window.config.choreoApiUrl,
+    });
+  }
 };
