@@ -76,8 +76,7 @@ export default function App() {
     if (isSignedIn) {
       setIsLoading(true);
       try {
-        const accessToken = await getAccessToken();
-        const res = await getBooks(accessToken);
+        const res = await getBooks();
         const grouped = groupBy(res.data, (item) => item.status);
         setReadList(grouped);
       } catch (e) {
@@ -96,9 +95,8 @@ export default function App() {
   }, [isAddItemOpen, state.isAuthenticated]);
 
   const handleDelete = async (id: string) => {
-    const accessToken = await getAccessToken();
     setIsLoading(true);
-    await deleteBooks(accessToken, id);
+    await deleteBooks(id);
     getReadingList();
     setIsLoading(false);
   };

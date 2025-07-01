@@ -19,7 +19,6 @@ import React, { useState } from "react";
 import { postBooks } from "../../../api/books/post-books";
 import { Book } from "../../../api/books/types/book";
 import Modal from "../modal";
-import { useAuthContext } from "@asgardeo/auth-react";
 import { Listbox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/24/solid";
 
@@ -40,7 +39,6 @@ export default function AddItem(props: AddItemProps) {
   const [author, setAuthor] = useState("");
   const [status, setStatus] = useState(statuses[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { getAccessToken } = useAuthContext();
 
   // Reset form when modal opens
   React.useEffect(() => {
@@ -57,13 +55,12 @@ export default function AddItem(props: AddItemProps) {
     
     setIsSubmitting(true);
     try {
-      const accessToken = await getAccessToken();
       const payload: Book = {
         title: name.trim(),
         author: author.trim(),
         status: status.name,
       };
-      await postBooks(accessToken, payload);
+      await postBooks(payload);
       
       // Reset form and close modal
       setName("");
