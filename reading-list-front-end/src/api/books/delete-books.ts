@@ -25,6 +25,6 @@ export async function deleteBooks(uuid: string) {
   }
   
   const instance = await getReadingListInstance();
-  const response = await instance.delete(`/books?id=${uuid}`);
+  const response = await instance.delete(`/books/${uuid}`);
   return response;
 }
