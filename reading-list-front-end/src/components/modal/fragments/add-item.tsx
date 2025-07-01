@@ -39,20 +39,42 @@ export default function AddItem(props: AddItemProps) {
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   const [status, setStatus] = useState(statuses[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { getAccessToken } = useAuthContext();
 
-  const handleOnSubmit = () => {
-    async function setBooks() {
+  // Reset form when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setName("");
+      setAuthor("");
+      setStatus(statuses[0]);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
+  const handleOnSubmit = async () => {
+    if (isSubmitting || !name.trim() || !author.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
       const accessToken = await getAccessToken();
       const payload: Book = {
-        title: name,
-        author: author,
+        title: name.trim(),
+        author: author.trim(),
         status: status.name,
       };
-      const response = await postBooks(accessToken, payload);
+      await postBooks(accessToken, payload);
+      
+      // Reset form and close modal
+      setName("");
+      setAuthor("");
+      setStatus(statuses[0]);
       setIsOpen(false);
+    } catch (error) {
+      console.error("Error adding book:", error);
+    } finally {
+      setIsSubmitting(false);
     }
-    setBooks();
   };
 
   const innerFragment = (
@@ -67,7 +89,9 @@ export default function AddItem(props: AddItemProps) {
             id="name"
             type="text"
             placeholder="Name"
+            value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={isSubmitting}
           />
         </div>
         <div className="mb-4">
@@ -79,7 +103,9 @@ export default function AddItem(props: AddItemProps) {
             id="author"
             type="text"
             placeholder="Author"
+            value={author}
             onChange={(e) => setAuthor(e.target.value)}
+            disabled={isSubmitting}
           />
         </div>
         <div className="mb-4">
@@ -140,7 +166,7 @@ export default function AddItem(props: AddItemProps) {
       title="Add Book"
       children={innerFragment}
       handleSubmit={handleOnSubmit}
-      isDisabled={!(name && author)}
+      isDisabled={!(name.trim() && author.trim()) || isSubmitting}
     />
   );
 }

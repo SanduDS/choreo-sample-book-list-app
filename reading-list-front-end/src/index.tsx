@@ -42,30 +42,27 @@ export default function App() {
     getBasicUserInfo,
     state,
   } = useAuthContext();
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [user, setUser] = useState<BasicUserInfo | null>(null);
 
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
   useEffect(() => {
-    async function signInCheck() {
+    async function checkAuthStatus() {
       setIsAuthLoading(true);
-      await sleep(2000);
-      const isSignedIn = await isAuthenticated();
-      setSignedIn(isSignedIn);
-      setIsAuthLoading(false);
-      return isSignedIn;
-    }
-    signInCheck().then((res) => {
-      if (res) {
-        getReadingList();
-        getUser();
-      } else {
-        console.log("User has not signed in");
+      try {
+        const isSignedIn = await isAuthenticated();
+        if (isSignedIn) {
+          await getUser();
+          await getReadingList();
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error);
+      } finally {
+        setIsAuthLoading(false);
       }
-    });
-  }, []);
+    }
+    
+    checkAuthStatus();
+  }, [state.isAuthenticated]); // Watch for authentication state changes
 
   async function getUser() {
     setIsLoading(true);
@@ -75,26 +72,28 @@ export default function App() {
   }
 
   async function getReadingList() {
-    if (signedIn) {
+    const isSignedIn = await isAuthenticated();
+    if (isSignedIn) {
       setIsLoading(true);
-      const accessToken = await getAccessToken();
-      getBooks(accessToken)
-        .then((res) => {
-          const grouped = groupBy(res.data, (item) => item.status);
-          setReadList(grouped);
-          setIsLoading(false);
-        })
-        .catch((e) => {
-          console.log(e);
-        });
+      try {
+        const accessToken = await getAccessToken();
+        const res = await getBooks(accessToken);
+        const grouped = groupBy(res.data, (item) => item.status);
+        setReadList(grouped);
+      } catch (e) {
+        console.log("Error fetching books:", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    if (!isAddItemOpen) {
+    if (!isAddItemOpen && state.isAuthenticated) {
+      // Refresh the reading list when modal closes
       getReadingList();
     }
-  }, [isAddItemOpen]);
+  }, [isAddItemOpen, state.isAuthenticated]);
 
   const handleDelete = async (id: string) => {
     const accessToken = await getAccessToken();
@@ -105,20 +104,38 @@ export default function App() {
   };
 
   const handleSignIn = async () => {
-    signIn()
-      .then(() => {
-        setSignedIn(true);
-      })
-      .catch((e) => {
-        console.log(e);
-      });
+    try {
+      await signIn();
+      // After successful sign in, refresh the page state
+      window.location.reload();
+    } catch (e) {
+      console.log("Sign in error:", e);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // Clear local state
+      setUser(null);
+      setReadList(null);
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
   };
 
   if (isAuthLoading) {
-    return <div className="animate-spin h-5 w-5 text-white">.</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
   }
 
-  if (!signedIn) {
+  // Check authentication status synchronously using the auth context state
+  const isSignedIn = state.isAuthenticated;
+
+  if (!isSignedIn) {
     return (
       <button
         className="float-right bg-black bg-opacity-20 p-2 rounded-md text-sm my-3 font-medium text-white"
@@ -153,7 +170,7 @@ export default function App() {
           >
             <button
               className="float-right bg-[#5b86e5] p-2 rounded-md text-sm my-3 font-medium text-white"
-              onClick={() => signOut()}
+              onClick={handleSignOut}
             >
               Logout
             </button>
@@ -202,7 +219,7 @@ export default function App() {
                   ))}
                 </Tab.List>
                 <Tab.Panels className="mt-2">
-                  {Object.values(readList).map((books: Book[], idx) => (
+                  {Object.entries(readList).map(([status, books], idx) => (
                     <Tab.Panel
                       key={idx}
                       className={
@@ -216,7 +233,7 @@ export default function App() {
                       }
                     >
                       <ul>
-                        {books.map((book) => (
+                        {(books as Book[]).map((book) => (
                           <div className="flex justify-between">
                             <li
                               key={book.id}
