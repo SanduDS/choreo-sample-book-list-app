@@ -78,7 +78,12 @@ export default function App() {
       setIsLoading(true);
       try {
         console.log('Fetching books...', forceRefresh ? '(forced refresh)' : '');
-        const res = await getBooks();
+        
+        // Get access token before making API call
+        const accessToken = await getAccessToken();
+        console.log('Access token obtained:', accessToken ? 'Yes' : 'No');
+        
+        const res = await getBooks(accessToken);
         console.log('Books response:', res.data);
         
         if (res.data && res.data.length > 0) {
@@ -128,7 +133,8 @@ export default function App() {
     
     try {
       setDeletingBookId(uuid); // Set specific book as being deleted
-      await deleteBooks(uuid);
+      const accessToken = await getAccessToken();
+      await deleteBooks(accessToken, uuid);
       console.log('Book deleted successfully');
       // Refresh the list after deletion
       await getReadingList();
@@ -338,6 +344,7 @@ export default function App() {
             <AddItem 
               isOpen={isAddItemOpen} 
               setIsOpen={setIsAddItemOpen}
+              getAccessToken={getAccessToken}
               onBookAdded={() => {
                 console.log('Book added callback triggered');
                 // Use a timeout to ensure the backend has processed the request

@@ -17,14 +17,14 @@
 
 import { getReadingListInstance } from "./instance";
 
-export async function deleteBooks(uuid: string) {
+export async function deleteBooks(accessToken: string, uuid: string) {
   console.log('deleteBooks called with uuid:', uuid, 'type:', typeof uuid);
   
   if (!uuid || uuid === 'undefined') {
     throw new Error('Invalid book UUID provided for deletion');
   }
   
-  const instance = await getReadingListInstance();
+  const instance = getReadingListInstance(accessToken);
   const response = await instance.delete(`/books/${uuid}`);
   return response;
 }

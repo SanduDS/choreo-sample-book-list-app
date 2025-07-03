@@ -27,9 +27,6 @@ interface Config {
   asgardeoClientId: string;
   asgardeoBaseUrl: string;
   choreoApiUrl: string;
-  tokenUrl?: string;
-  consumerKey?: string;
-  consumerSecret?: string;
 }
 
 declare global {

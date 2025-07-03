@@ -26,6 +26,7 @@ export interface AddItemProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onBookAdded?: () => void;
+  getAccessToken: () => Promise<string>;
 }
 
 const statuses = [
@@ -35,7 +36,7 @@ const statuses = [
 ];
 
 export default function AddItem(props: AddItemProps) {
-  const { isOpen, setIsOpen, onBookAdded } = props;
+  const { isOpen, setIsOpen, onBookAdded, getAccessToken } = props;
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   const [status, setStatus] = useState(statuses[0]);
@@ -61,7 +62,8 @@ export default function AddItem(props: AddItemProps) {
         author: author.trim(),
         status: status.name,
       };
-      await postBooks(payload);
+      const accessToken = await getAccessToken();
+      await postBooks(accessToken, payload);
       
       // Reset form and close modal
       setName("");

@@ -19,8 +19,8 @@ import { AxiosResponse } from "axios";
 import { getReadingListInstance } from "./instance";
 import { Book } from "./types/book";
 
-export async function postBooks(payload?: Book) {
-  const instance = await getReadingListInstance();
+export async function postBooks(accessToken: string, payload?: Book) {
+  const instance = getReadingListInstance(accessToken);
   const response = await instance.post("/books", payload);
   return response;
 }

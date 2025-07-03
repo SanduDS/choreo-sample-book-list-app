@@ -19,8 +19,8 @@ import { AxiosResponse } from "axios";
 import { getReadingListInstance } from "./instance";
 import { Book } from "./types/book";
 
-export async function getBooks() {
-  const instance = await getReadingListInstance();
+export async function getBooks(accessToken: string) {
+  const instance = getReadingListInstance(accessToken);
   const response = await instance.get("/books");
   
   // Convert object response to array format
