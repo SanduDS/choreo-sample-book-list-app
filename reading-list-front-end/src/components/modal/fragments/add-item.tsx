@@ -27,6 +27,7 @@ export interface AddItemProps {
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onBookAdded?: () => void;
   getAccessToken: () => Promise<string>;
+  getIDToken: () => Promise<string>;
 }
 
 const statuses = [
@@ -36,7 +37,7 @@ const statuses = [
 ];
 
 export default function AddItem(props: AddItemProps) {
-  const { isOpen, setIsOpen, onBookAdded, getAccessToken } = props;
+  const { isOpen, setIsOpen, onBookAdded, getAccessToken, getIDToken } = props;
   const [name, setName] = useState("");
   const [author, setAuthor] = useState("");
   const [status, setStatus] = useState(statuses[0]);
@@ -62,7 +63,13 @@ export default function AddItem(props: AddItemProps) {
         author: author.trim(),
         status: status.name,
       };
-      const accessToken = await getAccessToken();
+      let accessToken = await getAccessToken();
+      
+      // If getAccessToken doesn't return a JWT, try getIDToken
+      if (!accessToken || !accessToken.includes('.')) {
+        accessToken = await getIDToken();
+      }
+      
       await postBooks(accessToken, payload);
       
       // Reset form and close modal

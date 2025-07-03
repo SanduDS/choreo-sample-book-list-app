@@ -39,6 +39,7 @@ export default function App() {
     signIn,
     signOut,
     getAccessToken,
+    getIDToken,
     isAuthenticated,
     getBasicUserInfo,
     state,
@@ -80,8 +81,16 @@ export default function App() {
         console.log('Fetching books...', forceRefresh ? '(forced refresh)' : '');
         
         // Get access token before making API call
-        const accessToken = await getAccessToken();
-        console.log('Access token obtained:', accessToken ? 'Yes' : 'No');
+        let accessToken = await getAccessToken();
+        
+        // If getAccessToken doesn't return a JWT, try getIDToken
+        if (!accessToken || !accessToken.includes('.')) {
+          console.log('Access token is not a JWT, trying ID token...');
+          accessToken = await getIDToken();
+        }
+        
+        console.log('Token obtained:', accessToken ? 'Yes' : 'No');
+        console.log('Token format:', accessToken ? (accessToken.includes('.') ? 'JWT' : 'Other') : 'None');
         
         const res = await getBooks(accessToken);
         console.log('Books response:', res.data);
@@ -133,7 +142,13 @@ export default function App() {
     
     try {
       setDeletingBookId(uuid); // Set specific book as being deleted
-      const accessToken = await getAccessToken();
+      let accessToken = await getAccessToken();
+      
+      // If getAccessToken doesn't return a JWT, try getIDToken
+      if (!accessToken || !accessToken.includes('.')) {
+        accessToken = await getIDToken();
+      }
+      
       await deleteBooks(accessToken, uuid);
       console.log('Book deleted successfully');
       // Refresh the list after deletion
@@ -345,6 +360,7 @@ export default function App() {
               isOpen={isAddItemOpen} 
               setIsOpen={setIsAddItemOpen}
               getAccessToken={getAccessToken}
+              getIDToken={getIDToken}
               onBookAdded={() => {
                 console.log('Book added callback triggered');
                 // Use a timeout to ensure the backend has processed the request
